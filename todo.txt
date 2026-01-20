@@ -1,0 +1,36 @@
+---------------------- TO DO------------------------
+-- wyswietl biblioteke - get_song_version_choices()
+-- wyswietl wersje dla utworu
+-- odsluchaj -> zapis do ListeningHistory
+-- wyswietl playlisty + zawartosc playlisty - get_all_playlists(), get_playlist_contents(p_id INTEGER)
+-- dodawanie utworu do playlisty na koniec - add_song_to_playlist(p_id INTEGER, sv_id INTEGER, p_pos INTEGER) ---- nie na koniec!
+-- usuwanie z playlisty
+-- wyszukiwarka (tytuł / artysta / gatunek)
+
+--------------- ODTWÓRZ (po kolei)  ---------------
+----- piosenke (wersje) - odsłuchanie pojedyncze (bez next) (Gosia)
+----- playliste
+----- album
+----- artyste
+----- język
+----- gatunek
+----- następne (do każdego albo raz?) **opc
+
+--------------- DODAWANIE ---------------
+----- dodaj playliste
+----- dodaj album
+
+--------------- USUWANIE  ---------------
+----- usun playliste
+
+--------------- MODYFIKIOWANIE ---------------
+----- dodaj do playlisty
+----- usun z playlisty
+
+
+-------------------------------------- VIEW --------------------------------------
+--------------- Teraz słuchasz ---------------
+----- |tytuł|autor|album|czas trwania
+
+--------------- Statystyki od x do y ---------------
+----- funkcja
