@@ -311,7 +311,88 @@ $$;
 -- SELECT modify_song(10, dodaj_artyste => 'Rozni');
 -- SELECT modify_song(10, usun_artyste => 'Rozni');
 
+----------------- ODSŁUCHIWANIE -------------------
+------ sluchanie 1 piosenki bez next
+CREATE OR REPLACE FUNCTION play_song(svid INTEGER, sec INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO ListeningHistory
+        (song_version_id, listened_at, listened_seconds, is_full_played)
+    SELECT
+        svid,
+        now(),
+        sec,
+        sec >= duration * 0.8
+    FROM SongVersions
+    WHERE song_version_id = svid;
+END;
+$$;
+
+
+
+
+
 ------------------ STATYSTYKI ------------------
+
+--- STATYSTYKI Z CAŁEJ HISTORII SŁUCHANIA
+CREATE VIEW statistics_all AS
+WITH base_stats AS (
+    SELECT
+        SUM(listened_seconds) AS total_listened_time,
+        COUNT(*) AS playcount,
+        COUNT(*) FILTER (WHERE is_full_played) AS fullplaycount
+    FROM ListeningHistory
+),
+most_listened_version AS (
+    SELECT
+        vt.name AS version_type,
+        s.title
+    FROM ListeningHistory lh
+    JOIN SongVersions sv USING(song_version_id)
+    JOIN VersionTypes vt USING(version_type_id)
+    JOIN Songs s USING(song_id)
+	WHERE lh.is_full_played = TRUE
+    GROUP BY vt.name, s.title
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+),
+most_listened_song AS (
+    SELECT
+        s.title
+    FROM ListeningHistory lh
+    JOIN SongVersions sv USING(song_version_id)
+    JOIN Songs s USING(song_id)
+	WHERE lh.is_full_played = TRUE
+    GROUP BY s.song_id, s.title
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+),
+favourite_genre AS (
+    SELECT
+        mg.genre
+    FROM ListeningHistory lh
+    JOIN SongVersions sv USING(song_version_id)
+    JOIN SongsGenres sg USING(song_id)
+    JOIN MusicGenres mg USING(genre_id)
+	WHERE lh.is_full_played = TRUE
+    GROUP BY mg.genre
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+)
+SELECT
+    ms.title AS most_listened_song,
+    mv.title AS most_listened_version_title,
+	mv.version_type AS most_listened_song_version,
+    fg.genre AS favourite_genre,
+    bs.playcount AS total_playcount,
+    bs.fullplaycount AS songs_fully_played,
+    bs.total_listened_time / 60 AS total_minutes_listened
+FROM base_stats bs
+CROSS JOIN most_listened_version mv
+CROSS JOIN most_listened_song ms
+CROSS JOIN favourite_genre fg;
 
 
 

@@ -59,11 +59,38 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. Dodawanie utworu do playlisty (z logiką bazy danych)
+-- 4. Dodawanie utworu do playlisty
 CREATE OR REPLACE FUNCTION add_song_to_playlist(p_id INTEGER, sv_id INTEGER, p_pos INTEGER)
 RETURNS VOID AS $$
 BEGIN
     INSERT INTO PlaylistItems (playlist_id, song_version_id, position, added_at)
     VALUES (p_id, sv_id, p_pos, CURRENT_DATE);
+END;
+$$ LANGUAGE plpgsql;
+
+-- 5. Dodawanie playlisty
+CREATE OR REPLACE FUNCTION add_new_playlist(p_name VARCHAR)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO Playlists (name, created_at) 
+    VALUES (p_name, CURRENT_DATE);
+END;
+$$ LANGUAGE plpgsql;
+
+-- 6. Usuwanie playlisty
+CREATE OR REPLACE FUNCTION delete_playlist(p_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    DELETE FROM Playlists WHERE playlist_id = p_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- 7. Usuwanie utworu z playlisty
+CREATE OR REPLACE FUNCTION remove_song_from_playlist(p_id INTEGER, p_pos INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    DELETE FROM PlaylistItems 
+    WHERE playlist_id = p_id AND position = p_pos;
 END;
 $$ LANGUAGE plpgsql;

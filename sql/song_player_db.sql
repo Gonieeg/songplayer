@@ -99,7 +99,7 @@ CREATE TABLE ListeningHistory(
     song_version_id INTEGER NOT NULL REFERENCES SongVersions(song_version_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
-    listened_at TIMESTAMP NOT NULL,
+    listened_at TIMESTAMPTZ NOT NULL,
     listened_seconds INTEGER NOT NULL CHECK (listened_seconds >= 0),
     is_full_played BOOLEAN NOT NULL
 );

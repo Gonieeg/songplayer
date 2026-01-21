@@ -6,11 +6,11 @@ library(RPostgres)
 
 con <- dbConnect(
   RPostgres::Postgres(),
-  dbname = "projekt_muzyka",
+  dbname = "muzyka",
   host = "localhost",
   port = 5432,
-  user = "guy",
-  password = "haslo"
+  user = "TWOJANAZWA",
+  password = "HASLO"
 )
 
 
@@ -28,22 +28,20 @@ db_get_playlist_items <- function(conn, p_id) {
 }
 
 db_add_playlist <- function(conn, name) {
-  dbExecute(conn, "INSERT INTO Playlists (name, created_at) VALUES ($1, $2)", 
-            params = list(name, as.character(Sys.Date())))
+  dbExecute(conn, "SELECT add_new_playlist($1)", params = list(name))
 }
 
 db_delete_playlist <- function(conn, p_id) {
-  dbExecute(conn, "DELETE FROM Playlists WHERE playlist_id = $1", params = list(p_id))
+  dbExecute(conn, "SELECT delete_playlist($1)", params = list(p_id))
 }
 
 db_add_song_to_playlist <- function(conn, p_id, sv_id, pos) {
-  # Wykorzystujemy naszą funkcję SQL
   dbExecute(conn, "SELECT add_song_to_playlist($1, $2, $3)", 
             params = list(p_id, as.numeric(sv_id), pos))
 }
 
 db_remove_song_from_playlist <- function(conn, p_id, pos) {
-  dbExecute(conn, "DELETE FROM PlaylistItems WHERE playlist_id = $1 AND position = $2",
+  dbExecute(conn, "SELECT remove_song_from_playlist($1, $2)", 
             params = list(p_id, pos))
 }
 
