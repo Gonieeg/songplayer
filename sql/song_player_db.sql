@@ -104,6 +104,17 @@ CREATE TABLE ListeningHistory(
     is_full_played BOOLEAN NOT NULL
 );
 
+-- PlaybackSessions
+CREATE TABLE PlaybackSessions (
+    session_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    song_version_id INTEGER NOT NULL REFERENCES SongVersions(song_version_id)
+        ON DELETE CASCADE,
+    started_at TIMESTAMPTZ NOT NULL,
+    last_update TIMESTAMPTZ NOT NULL,
+    listened_seconds INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
 -------------------------------------- NASZ DATABASE --------------------------------------
 -- Artists
 INSERT INTO Artists (name) VALUES 
