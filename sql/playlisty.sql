@@ -60,13 +60,59 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 4. Dodawanie utworu do playlisty
-CREATE OR REPLACE FUNCTION add_song_to_playlist(p_id INTEGER, sv_id INTEGER, p_pos INTEGER)
+-- FUNKCJA TECHNICZNA – NIE WOLAC Z UI
+CREATE OR REPLACE FUNCTION add_song_to_playlist_at(p_id INTEGER, sv_id INTEGER, p_pos INTEGER)
 RETURNS VOID AS $$
 BEGIN
+    -- walidacja playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- walidacja wersji piosenki
+    IF NOT EXISTS (SELECT 1 FROM SongVersions WHERE song_version_id = sv_id) THEN
+        RAISE EXCEPTION 'Nie ma song_version o id=%', sv_id;
+    END IF;
+
+    -- walidacja pozycji
+    IF p_pos IS NULL OR p_pos <= 0 THEN
+        RAISE EXCEPTION 'Pozycja musi byc liczba > 0';
+    END IF;
+
     INSERT INTO PlaylistItems (playlist_id, song_version_id, position, added_at)
     VALUES (p_id, sv_id, p_pos, CURRENT_DATE);
 END;
 $$ LANGUAGE plpgsql;
+
+-- 4.2 Dodawanie utworu do playlisty, ale automatycznie
+CREATE OR REPLACE FUNCTION add_song_to_playlist_auto(p_id INTEGER, sv_id INTEGER)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    new_pos INTEGER;
+BEGIN
+    -- walidacja playlisty 
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- walidacja wersji
+    IF NOT EXISTS (SELECT 1 FROM SongVersions WHERE song_version_id = sv_id) THEN
+        RAISE EXCEPTION 'Nie ma song_version o id=%', sv_id;
+    END IF;
+
+    -- automat - pozycja na koncu
+    SELECT COALESCE(MAX(position), 0) + 1
+    INTO new_pos
+    FROM PlaylistItems
+    WHERE playlist_id = p_id;
+
+    -- uzycie funkcji z 4
+    PERFORM add_song_to_playlist_at(p_id, sv_id, new_pos);
+    RETURN new_pos;
+END;
+$$;
 
 -- 5. Dodawanie playlisty
 CREATE OR REPLACE FUNCTION add_new_playlist(p_name VARCHAR)
