@@ -2,15 +2,17 @@ library(shiny)
 library(DBI)
 library(DT)
 library(RPostgres)
+#library(shinydashboard)
+library(shinyWidgets)
 
 # Łączenie z bazą
 con <- dbConnect(
   RPostgres::Postgres(),
-  dbname = "muzyka",
+  dbname = "WPISZ",
   host = "localhost",
   port = 5432,
-  user = "TWOJANAZWA",
-  password = "HASLO"
+  user = "WPISZ",
+  password = "WPISZ"
 )
 
 # Funkcje db
@@ -137,13 +139,16 @@ server <- function(input, output, session) {
                  h4("Dodaj utwór"),
                  selectizeInput("song_v_id", "Wyszukaj utwór:", 
                                 choices = c("Zacznij pisać..." = "", db_get_song_choices(con))),
-                 numericInput("pos", "Pozycja:", value = next_pos),
+                 #numericInput("pos", "Pozycja:", value = next_pos()), # psuło, było bez ()
                  actionButton("add_song_btn", "Dodaj do listy", class = "btn-primary"),
                  hr(),
                  actionButton("move_up_btn", "↑ Przesuń w górę", class = "btn-secondary"),
                  actionButton("move_down_btn", "↓ Przesuń w dół", class = "btn-secondary"),
                  actionButton("remove_song_btn", "Usuń zaznaczony utwór", class = "btn-warning"),
                  hr(),
+                 #actionButton("play_btn", label = reactive(if (is_playing()) "Stop" else "Play")), # na dole w play_btn label
+                 actionButton("play_btn", "Play"),
+                 shinyWidgets::progressBar(id = "progress", value = 0, total = dur)
                  actionButton("play_btn", label = reactive(if (is_playing()) "Stop" else "Play")),
                  progressBar(id = "progress", value = playback_seconds(), total = dur)
                )
@@ -233,3 +238,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
