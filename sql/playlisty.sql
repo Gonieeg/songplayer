@@ -140,3 +140,70 @@ BEGIN
     WHERE playlist_id = p_id AND position = p_pos;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 8. Zmiana pozycji na playliscie
+CREATE OR REPLACE FUNCTION move_playlist_item(p_id INTEGER, old_pos INTEGER, new_pos INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    max_pos INTEGER;
+BEGIN
+    -- walidacja istnienia playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- max pozycja
+    SELECT MAX(position)
+    INTO max_pos
+    FROM PlaylistItems
+    WHERE playlist_id = p_id;
+
+    -- chcemy zmienic pozycje na playliscie bez utworow
+    IF max_pos IS NULL THEN
+        RAISE EXCEPTION 'Playlista % jest pusta', p_id;
+    END IF;
+
+    -- walidacja pozycji
+    IF old_pos < 1 OR old_pos > max_pos THEN
+        RAISE EXCEPTION 'old_pos=% poza zakresem 1..%', old_pos, max_pos;
+    END IF;
+    IF new_pos < 1 OR new_pos > max_pos THEN
+        RAISE EXCEPTION 'new_pos=% poza zakresem 1..%', new_pos, max_pos;
+    END IF;
+
+    -- nic nie robimy, bo old=new
+    IF old_pos = new_pos THEN
+        RETURN;
+    END IF;
+
+    -- tymczasowo przenosimy pozycje poza liste
+    UPDATE PlaylistItems
+    SET position = max_pos + 1
+    WHERE playlist_id = p_id AND position = old_pos;
+
+    -- tworzymy dziure / przesuwamy pozostale w zaleznosci czy chcemy
+    -- pozycje nizej
+    IF old_pos < new_pos THEN
+        UPDATE PlaylistItems
+        SET position = position - 1
+        WHERE playlist_id = p_id
+          AND position > old_pos
+          AND position <= new_pos;
+    -- pozycje wyzej
+    ELSE
+        UPDATE PlaylistItems
+        SET position = position + 1
+        WHERE playlist_id = p_id
+          AND position >= new_pos
+          AND position < old_pos;
+    END IF;
+
+    -- wstawiamy nasza piosenke na odpowiednie miejsce
+    UPDATE PlaylistItems
+    SET position = new_pos
+    WHERE playlist_id = p_id AND position = max_pos + 1;
+END;
+$$;
+
