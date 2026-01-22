@@ -34,3 +34,16 @@
 
 --------------- Statystyki od x do y ---------------
 ----- funkcja
+
+-------------------------------------- BOTTOM LINE --------------------------------------
+-- Importowanie
+-- \i 'C:/.../song_player_db.sql'
+
+-- Usuwanie tabel z pamięci
+-- DROP TABLE IF EXISTS ListeningHistory, PlaylistItems, Playlists, SongVersions, SongsGenres, SongsArtists, Songs, MusicAlbums, VersionTypes, Languages, MusicGenres, Artists CASCADE;
+
+-- Fajne wyswietlanie TABEL
+-- \x off
+-- \pset pager off
+-- \pset format aligned
+-- \pset expanded off
