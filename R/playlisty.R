@@ -149,6 +149,8 @@ server <- function(input, output, session) {
                  #actionButton("play_btn", label = reactive(if (is_playing()) "Stop" else "Play")), # na dole w play_btn label
                  actionButton("play_btn", "Play"),
                  shinyWidgets::progressBar(id = "progress", value = 0, total = dur)
+                 actionButton("play_btn", label = reactive(if (is_playing()) "Stop" else "Play")),
+                 progressBar(id = "progress", value = playback_seconds(), total = dur)
                )
         ),
         column(8,
@@ -213,58 +215,25 @@ server <- function(input, output, session) {
       
   # PLAY / STOP
   observeEvent(input$play_btn, {
-    req(input$songs_table_rows_selected)
-    
     if (!is_playing()) {
       sv_id <- songs_rv()$song_version_id[input$songs_table_rows_selected]
       sid <- db_start_playback(con, sv_id)
-      
       current_session(sid)
       playback_seconds(0)
       is_playing(TRUE)
-      
-      shinyWidgets::updateProgressBar(
-        session, "progress",
-        value = 0,
-        total = songs_rv()$duration[input$songs_table_rows_selected]
-      )
-      
     } else {
       db_finish_playback(con, current_session())
       current_session(NULL)
       is_playing(FALSE)
-      
-      shinyWidgets::updateProgressBar(session, "progress", value = 0, total = dur)
     }
   })
   
-  
   # TIMER
-  observe({
-    req(is_playing(), input$songs_table_rows_selected)
-    
+   observe({
     invalidateLater(1000, session)
-    
-    playback_seconds(playback_seconds() + 1)
-    
-    shinyWidgets::updateProgressBar(
-      session,
-      id = "progress",
-      value = playback_seconds(),
-      total = songs_rv()$duration[input$songs_table_rows_selected]
-    )
-  })
-  
-  # play_btn label  - żeby label ile jest sekund się zmieniał bo ten poprzedni podobno może być tylko stały
-  observe({
-    updateActionButton(
-      session,
-      "play_btn",
-      label = if (is_playing()) "Stop" else "Play"
-    )
-  })
-  
-  
+    if (is_playing())
+      playback_seconds(playback_seconds() + 1)
+  }) 
 
 }
 

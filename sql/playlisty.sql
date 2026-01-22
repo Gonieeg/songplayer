@@ -60,13 +60,59 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 4. Dodawanie utworu do playlisty
-CREATE OR REPLACE FUNCTION add_song_to_playlist(p_id INTEGER, sv_id INTEGER, p_pos INTEGER)
+-- FUNKCJA TECHNICZNA – NIE WOLAC Z UI
+CREATE OR REPLACE FUNCTION add_song_to_playlist_at(p_id INTEGER, sv_id INTEGER, p_pos INTEGER)
 RETURNS VOID AS $$
 BEGIN
+    -- walidacja playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- walidacja wersji piosenki
+    IF NOT EXISTS (SELECT 1 FROM SongVersions WHERE song_version_id = sv_id) THEN
+        RAISE EXCEPTION 'Nie ma song_version o id=%', sv_id;
+    END IF;
+
+    -- walidacja pozycji
+    IF p_pos IS NULL OR p_pos <= 0 THEN
+        RAISE EXCEPTION 'Pozycja musi byc liczba > 0';
+    END IF;
+
     INSERT INTO PlaylistItems (playlist_id, song_version_id, position, added_at)
     VALUES (p_id, sv_id, p_pos, CURRENT_DATE);
 END;
 $$ LANGUAGE plpgsql;
+
+-- 4.2 Dodawanie utworu do playlisty, ale automatycznie
+CREATE OR REPLACE FUNCTION add_song_to_playlist_auto(p_id INTEGER, sv_id INTEGER)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    new_pos INTEGER;
+BEGIN
+    -- walidacja playlisty 
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- walidacja wersji
+    IF NOT EXISTS (SELECT 1 FROM SongVersions WHERE song_version_id = sv_id) THEN
+        RAISE EXCEPTION 'Nie ma song_version o id=%', sv_id;
+    END IF;
+
+    -- automat - pozycja na koncu
+    SELECT COALESCE(MAX(position), 0) + 1
+    INTO new_pos
+    FROM PlaylistItems
+    WHERE playlist_id = p_id;
+
+    -- uzycie funkcji z 4
+    PERFORM add_song_to_playlist_at(p_id, sv_id, new_pos);
+    RETURN new_pos;
+END;
+$$;
 
 -- 5. Dodawanie playlisty
 CREATE OR REPLACE FUNCTION add_new_playlist(p_name VARCHAR)
@@ -88,9 +134,138 @@ $$ LANGUAGE plpgsql;
 
 -- 7. Usuwanie utworu z playlisty
 CREATE OR REPLACE FUNCTION remove_song_from_playlist(p_id INTEGER, p_pos INTEGER)
-RETURNS VOID AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE max_pos INTEGER;
 BEGIN
+     -- walidacja playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- sprawdzamy ile elementow ma lista
+    SELECT MAX(position)
+    INTO max_pos
+    FROM PlaylistItems
+    WHERE playlist_id = p_id;
+
+    IF max_pos IS NULL THEN
+        RAISE EXCEPTION 'Playlista % jest pusta', p_id;
+    END IF;
+
+    -- usuwamy element
     DELETE FROM PlaylistItems 
     WHERE playlist_id = p_id AND position = p_pos;
+
+    -- domykamy pozycje
+    UPDATE PlaylistItems
+    SET position = position - 1
+    WHERE playlist_id = p_id
+      AND position > p_pos;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
+-- 8. Zmiana pozycji na playliscie
+CREATE OR REPLACE FUNCTION move_playlist_item(p_id INTEGER, old_pos INTEGER, new_pos INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    max_pos INTEGER;
+BEGIN
+    -- walidacja istnienia playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- max pozycja
+    SELECT MAX(position)
+    INTO max_pos
+    FROM PlaylistItems
+    WHERE playlist_id = p_id;
+
+    -- chcemy zmienic pozycje na playliscie bez utworow
+    IF max_pos IS NULL THEN
+        RAISE EXCEPTION 'Playlista % jest pusta', p_id;
+    END IF;
+
+    -- walidacja pozycji
+    IF old_pos < 1 OR old_pos > max_pos THEN
+        RAISE EXCEPTION 'old_pos=% poza zakresem 1..%', old_pos, max_pos;
+    END IF;
+    IF new_pos < 1 OR new_pos > max_pos THEN
+        RAISE EXCEPTION 'new_pos=% poza zakresem 1..%', new_pos, max_pos;
+    END IF;
+
+    -- nic nie robimy, bo old=new
+    IF old_pos = new_pos THEN
+        RETURN;
+    END IF;
+
+    -- tymczasowo przenosimy pozycje poza liste
+    UPDATE PlaylistItems
+    SET position = max_pos + 1
+    WHERE playlist_id = p_id AND position = old_pos;
+
+    -- tworzymy dziure / przesuwamy pozostale w zaleznosci czy chcemy
+    -- pozycje nizej
+    IF old_pos < new_pos THEN
+        UPDATE PlaylistItems
+        SET position = position - 1
+        WHERE playlist_id = p_id
+          AND position > old_pos
+          AND position <= new_pos;
+    -- pozycje wyzej
+    ELSE
+        UPDATE PlaylistItems
+        SET position = position + 1
+        WHERE playlist_id = p_id
+          AND position >= new_pos
+          AND position < old_pos;
+    END IF;
+
+    -- wstawiamy nasza piosenke na odpowiednie miejsce
+    UPDATE PlaylistItems
+    SET position = new_pos
+    WHERE playlist_id = p_id AND position = max_pos + 1;
+END;
+$$;
+
+-- 9. Odtworz utwor (zalozenie - user nie zna id, po prostu wybiera utwor)
+CREATE OR REPLACE FUNCTION play_playlist_item(p_id INTEGER, p_pos INTEGER, listened_sec INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    sv_id INTEGER;
+    dur INTEGER;
+BEGIN
+    -- walidacja playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- bierzemy song_version_id i duration
+    SELECT sv.song_version_id, sv.duration
+    INTO sv_id, dur
+    FROM PlaylistItems pi
+    JOIN SongVersions sv ON pi.song_version_id = sv.song_version_id
+    WHERE pi.playlist_id = p_id
+      AND pi.position = p_pos;
+
+    IF sv_id IS NULL THEN
+        RAISE EXCEPTION 'Brak elementu playlisty (playlist_id=%, pos=%)', p_id, p_pos;
+    END IF;
+
+    -- walidacja czasu
+    IF listened_sec < 0 THEN
+        RAISE EXCEPTION 'listened_sec musi byc >= 0';
+    END IF;
+
+    INSERT INTO ListeningHistory(song_version_id, listened_at, listened_seconds, is_full_played)
+    VALUES (sv_id, now(), listened_sec, listened_sec >= dur * 0.8);
+END;
+$$;
+
+

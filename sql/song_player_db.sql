@@ -104,6 +104,17 @@ CREATE TABLE ListeningHistory(
     is_full_played BOOLEAN NOT NULL
 );
 
+-- PlaybackSessions
+CREATE TABLE PlaybackSessions (
+    session_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    song_version_id INTEGER NOT NULL REFERENCES SongVersions(song_version_id)
+        ON DELETE CASCADE,
+    started_at TIMESTAMPTZ NOT NULL,
+    last_update TIMESTAMPTZ NOT NULL,
+    listened_seconds INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
 -------------------------------------- NASZ DATABASE --------------------------------------
 -- Artists
 INSERT INTO Artists (name) VALUES 
@@ -228,19 +239,3 @@ INSERT INTO ListeningHistory (song_version_id, listened_at, listened_seconds, is
 (10, '2026-01-18 16:30:00', 230, TRUE),
 (4,  '2026-01-17 20:10:00', 231, FALSE),
 (7,  '2026-01-17 22:00:00', 226, TRUE);
-
-
--------------------------------------- BOTTOM LINE --------------------------------------
--- Importowanie
--- \i 'C:/Users/Saskia/Desktop/Studia/Bazy danych/PROJEKT/song_player_db.sql'
-
--- Usuwanie tabel z pamięci
--- DROP TABLE IF EXISTS ListeningHistory, PlaylistItems, Playlists, SongVersions, SongsGenres, SongsArtists, Songs, MusicAlbums, VersionTypes, Languages, MusicGenres, Artists CASCADE;
-
--- Fajne wyswietlanie TABEL
--- \x off
--- \pset pager off
--- \pset format aligned
--- \pset expanded off
-
-

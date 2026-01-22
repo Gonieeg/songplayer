@@ -312,7 +312,7 @@ $$;
 -- SELECT modify_song(10, usun_artyste => 'Rozni');
 
 ----------------- ODSŁUCHIWANIE -------------------
------- sluchanie 1 piosenki bez next
+------ sluchanie 1 piosenki bez next (przed automatyzacja)
 CREATE OR REPLACE FUNCTION play_song(svid INTEGER, sec INTEGER)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -330,9 +330,59 @@ BEGIN
 END;
 $$;
 
+-- Odtwarzanie - start
+CREATE OR REPLACE FUNCTION start_playback(sv_id INTEGER)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE sid INTEGER;
+BEGIN
+    INSERT INTO PlaybackSessions(song_version_id, started_at, last_update)
+    VALUES (sv_id, now(), now())
+    RETURNING session_id INTO sid;
 
+    RETURN sid;
+END;
+$$;
 
+-- Odtwarzanie - pauza/stop
+CREATE OR REPLACE FUNCTION pause_playback(p_session_id INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE PlaybackSessions
+    SET
+        listened_seconds = listened_seconds
+            + EXTRACT(EPOCH FROM (now() - last_update))::INTEGER,
+        last_update = now(),
+        is_active = FALSE
+    WHERE session_id = p_session_id;
+END;
+$$;
 
+-- Odtwarzanie - zakonczenie
+CREATE OR REPLACE FUNCTION finish_playback(p_session_id INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    sv_id INTEGER;
+    sec INTEGER;
+    dur INTEGER;
+BEGIN
+    SELECT ps.song_version_id, ps.listened_seconds, sv.duration
+    INTO sv_id, sec, dur
+    FROM PlaybackSessions ps
+    JOIN SongVersions sv USING(song_version_id)
+    WHERE ps.session_id = p_session_id;
+
+    INSERT INTO ListeningHistory(song_version_id, listened_at, listened_seconds, is_full_played)
+    VALUES (sv_id, now(), sec, sec >= dur * 0.8);
+
+    DELETE FROM PlaybackSessions WHERE session_id = p_session_id;
+END;
+$$;
 
 ------------------ STATYSTYKI ------------------
 
@@ -395,64 +445,87 @@ CROSS JOIN most_listened_song ms
 CROSS JOIN favourite_genre fg;
 
 
+<<<<<<< Updated upstream
+=======
+--- STATYSTYKI OD DO
+----- np. SELECT * FROM monthly_stats('2026-01-01', '2026-01-21');
 
-
---------------- NOTATKI PO ---------------
--- Czego juz nie potrzebujemy, bo robi to dodawanie/modyfikowanie piosenki:
--- dodawanie: jezyka, wersji i gatunku
--- w planie zeby robilo to tez moze modyfikuj
-
--- Czy (z)robi(ł) to X?
--- dodawanie playlist (Szymon)
--- dodawanie do playlisty
--- automatyczne recordy do ListeningHistory na podstawie odtwarzania z R
-
--- Finito (zrobiona, a co nie - na liście):
--- dodawanie
-
---------------- BAJZEL ---------------
--- wyswietl biblioteke
--- wyswietl wersje dla utworu
--- odsluchaj -> zapis do ListeningHistory
--- wyswietl playlisty + zawartosc playlisty
--- dodawanie utworu do playlisty na koniec
--- usuwanie z playlisty
--- wyszukiwarka (tytuł / artysta / gatunek)
-
---------------- ODTWÓRZ (po kolei)  ---------------
------ piosenke (wersje)
------ playliste
------ album
------ artyste
------ język
------ gatunek
------ następne (do każdego albo raz?) **opc
-
---------------- DODAWANIE ---------------
------ dodaj playliste
------ dodaj album
-
---------------- USUWANIE  ---------------
------ usun playliste
-
---------------- MODYFIKIOWANIE ---------------
------ dodaj do playlisty
------ usun z playlisty
-
-
--------------------------------------- VIEW --------------------------------------
---------------- Teraz słuchasz ---------------
------ |tytuł|autor|album|czas trwania
-
---------------- Statystyki od x do y ---------------
------ funkcja
-
---------------- Statystyki od dzis do 30 dni wstecz ---------------
--- widok
-
--------------------------------------- BOTTOM TEXT --------------------------------------
--- Odtwarzanie kodu w konsoli psql
--- \i 'C:/Users/Saskia/Desktop/Studia/Bazy danych/PROJEKT/song_player_db.sql'
-
--- Usuwanie tabel z pamięci
--- DROP TABLE IF EXISTS ListeningHistory, PlaylistItems, Playlists, SongVersions, SongsGenres, SongsArtists, Songs, MusicAlbums, VersionTypes, Languages, MusicGenres, Artists CASCADE;
+CREATE OR REPLACE FUNCTION monthly_stats(od_dnia DATE, do_dnia DATE)
+RETURNS TABLE(
+	most_listened_song VARCHAR(255),
+	most_listened_version_title VARCHAR(255),
+	most_listened_song_version VARCHAR(255),
+	favourite_genre VARCHAR(255),
+	total_playcount INT,
+	songs_fully_played INT,
+	total_minutes_listened INT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	RETURN QUERY
+	WITH base_stats AS (
+	SELECT
+		SUM(listened_seconds) AS total_listened_time,
+		COUNT(*) AS playcount,
+		COUNT(*) FILTER (WHERE is_full_played) AS fullplaycount
+	FROM ListeningHistory
+	WHERE listened_at >= od_dnia
+	  AND listened_at < do_dnia + INTERVAL '1 day'
+	),
+	most_listened_version AS (
+		SELECT
+			vt.name AS version_type,
+			s.title
+		FROM ListeningHistory lh
+		JOIN SongVersions sv USING(song_version_id)
+		JOIN VersionTypes vt USING(version_type_id)
+		JOIN Songs s USING(song_id)
+		WHERE (lh.is_full_played = TRUE 
+			AND (lh.listened_at >= od_dnia 
+				AND lh.listened_at < do_dnia + INTERVAL '1 day'))
+		GROUP BY vt.name, s.title
+		ORDER BY COUNT(*) DESC
+		LIMIT 1
+	),
+	most_listened_song AS (
+		SELECT
+			s.title
+		FROM ListeningHistory lh
+		JOIN SongVersions sv USING(song_version_id)
+		JOIN Songs s USING(song_id)
+		WHERE (lh.is_full_played = TRUE
+			AND (lh.listened_at >= od_dnia 
+				AND lh.listened_at < do_dnia + INTERVAL '1 day'))
+		GROUP BY s.song_id, s.title
+		ORDER BY COUNT(*) DESC
+		LIMIT 1
+	),
+	favourite_genre AS (
+		SELECT
+			mg.genre
+		FROM ListeningHistory lh
+		JOIN SongVersions sv USING(song_version_id)
+		JOIN SongsGenres sg USING(song_id)
+		JOIN MusicGenres mg USING(genre_id)
+		WHERE (lh.is_full_played = TRUE
+			AND (lh.listened_at >= od_dnia 
+				AND lh.listened_at < do_dnia + INTERVAL '1 day'))
+		GROUP BY mg.genre
+		ORDER BY COUNT(*) DESC
+		LIMIT 1
+	)
+	SELECT
+		ms.title AS most_listened_song,
+		mv.title AS most_listened_version_title,
+		mv.version_type AS most_listened_song_version,
+		fg.genre AS favourite_genre,
+		bs.playcount::INT AS total_playcount,
+		bs.fullplaycount::INT AS songs_fully_played,
+		(bs.total_listened_time / 60)::INT AS total_minutes_listened
+	FROM base_stats bs
+	CROSS JOIN most_listened_version mv
+	CROSS JOIN most_listened_song ms
+	CROSS JOIN favourite_genre fg;
+END;
+$$;
+>>>>>>> Stashed changes
