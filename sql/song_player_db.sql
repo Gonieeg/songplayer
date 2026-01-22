@@ -232,7 +232,7 @@ INSERT INTO ListeningHistory (song_version_id, listened_at, listened_seconds, is
 
 -------------------------------------- BOTTOM LINE --------------------------------------
 -- Importowanie
--- \i 'C:/Users/Saskia/Desktop/Studia/Bazy danych/PROJEKT/song_player_db.sql'
+-- \i 'C:/.../song_player_db.sql'
 
 -- Usuwanie tabel z pamięci
 -- DROP TABLE IF EXISTS ListeningHistory, PlaylistItems, Playlists, SongVersions, SongsGenres, SongsArtists, Songs, MusicAlbums, VersionTypes, Languages, MusicGenres, Artists CASCADE;
