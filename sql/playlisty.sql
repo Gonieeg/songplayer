@@ -134,12 +134,37 @@ $$ LANGUAGE plpgsql;
 
 -- 7. Usuwanie utworu z playlisty
 CREATE OR REPLACE FUNCTION remove_song_from_playlist(p_id INTEGER, p_pos INTEGER)
-RETURNS VOID AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE max_pos INTEGER;
 BEGIN
+     -- walidacja playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- sprawdzamy ile elementow ma lista
+    SELECT MAX(position)
+    INTO max_pos
+    FROM PlaylistItems
+    WHERE playlist_id = p_id;
+
+    IF max_pos IS NULL THEN
+        RAISE EXCEPTION 'Playlista % jest pusta', p_id;
+    END IF;
+
+    -- usuwamy element
     DELETE FROM PlaylistItems 
     WHERE playlist_id = p_id AND position = p_pos;
+
+    -- domykamy pozycje
+    UPDATE PlaylistItems
+    SET position = position - 1
+    WHERE playlist_id = p_id
+      AND position > p_pos;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 8. Zmiana pozycji na playliscie
 CREATE OR REPLACE FUNCTION move_playlist_item(p_id INTEGER, old_pos INTEGER, new_pos INTEGER)
