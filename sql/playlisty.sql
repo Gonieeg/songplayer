@@ -232,3 +232,40 @@ BEGIN
 END;
 $$;
 
+-- 9. Odtworz utwor (zalozenie - user nie zna id, po prostu wybiera utwor)
+CREATE OR REPLACE FUNCTION play_playlist_item(p_id INTEGER, p_pos INTEGER, listened_sec INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    sv_id INTEGER;
+    dur INTEGER;
+BEGIN
+    -- walidacja playlisty
+    IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
+        RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
+    END IF;
+
+    -- bierzemy song_version_id i duration
+    SELECT sv.song_version_id, sv.duration
+    INTO sv_id, dur
+    FROM PlaylistItems pi
+    JOIN SongVersions sv ON pi.song_version_id = sv.song_version_id
+    WHERE pi.playlist_id = p_id
+      AND pi.position = p_pos;
+
+    IF sv_id IS NULL THEN
+        RAISE EXCEPTION 'Brak elementu playlisty (playlist_id=%, pos=%)', p_id, p_pos;
+    END IF;
+
+    -- walidacja czasu
+    IF listened_sec < 0 THEN
+        RAISE EXCEPTION 'listened_sec musi byc >= 0';
+    END IF;
+
+    INSERT INTO ListeningHistory(song_version_id, listened_at, listened_seconds, is_full_played)
+    VALUES (sv_id, now(), listened_sec, listened_sec >= dur * 0.8);
+END;
+$$;
+
+
