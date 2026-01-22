@@ -160,7 +160,7 @@ server <- function(input, output, session) {
   observeEvent(input$add_song_btn, {
     req(input$song_v_id)
     tryCatch({
-      db_add_song_to_playlist(con, get_selected_playlist_id(), input$song_v_id, input$pos)
+      db_add_song_to_playlist(con, get_selected_playlist_id(), input$song_v_id)
       songs_rv(db_get_playlist_items(con, get_selected_playlist_id()))
       showNotification("Utwór dodany", type = "message")
     }, error = function(e) {
