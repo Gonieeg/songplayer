@@ -45,6 +45,12 @@ db_remove_song_from_playlist <- function(conn, p_id, pos) {
             params = list(p_id, pos))
 }
 
+db_move_playlist_item <- function(conn, p_id, old_pos, new_pos) {
+  dbExecute(conn, "SELECT move_playlist_item($1, $2, $3)",
+    params = list(p_id, old_pos, new_pos))
+}
+
+
 ui <- fluidPage(
   titlePanel("System Zarządzania Muzyką"),
   
@@ -122,7 +128,9 @@ server <- function(input, output, session) {
                  numericInput("pos", "Pozycja:", value = next_pos),
                  actionButton("add_song_btn", "Dodaj do listy", class = "btn-primary"),
                  br(),
-                 actionButton("remove_song_btn", "Usuń zaznaczony utwór", class = "btn-warning")
+                 actionButton("remove_song_btn", "Usuń zaznaczony utwór", class = "btn-warning"),
+                 actionButton("move_up_btn", "↑ Przesuń w górę", class = "btn-secondary"),
+                 actionButton("move_down_btn", "↓ Przesuń w dół", class = "btn-secondary")
                )
         ),
         column(8,
@@ -180,6 +188,34 @@ server <- function(input, output, session) {
     songs_rv(db_get_playlist_items(con, get_selected_playlist_id()))
     showNotification("Utwór usunięty", type = "warning")
   })
+
+  observeEvent(input$move_up_btn, {
+  req(input$songs_table_rows_selected)
+  
+  sel <- input$songs_table_rows_selected
+  old_pos <- songs_rv()$item_position[sel]
+  
+  if (old_pos == 1) return()  # już jest na górze
+  
+  db_move_playlist_item(con, get_selected_playlist_id(), old_pos, old_pos - 1)
+  
+  songs_rv(db_get_playlist_items(con, get_selected_playlist_id()))
+})
+
+ observeEvent(input$move_down_btn, {
+  req(input$songs_table_rows_selected)
+  
+  sel <- input$songs_table_rows_selected
+  old_pos <- songs_rv()$item_position[sel]
+  max_pos <- max(songs_rv()$item_position)
+  
+  if (old_pos == max_pos) return()  # już jest na dole
+  
+  db_move_playlist_item(con, get_selected_playlist_id(), old_pos, old_pos + 1)
+  
+  songs_rv(db_get_playlist_items(con, get_selected_playlist_id()))
+}) 
+  
 }
 
 shinyApp(ui, server)
