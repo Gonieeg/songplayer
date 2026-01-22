@@ -239,19 +239,3 @@ INSERT INTO ListeningHistory (song_version_id, listened_at, listened_seconds, is
 (10, '2026-01-18 16:30:00', 230, TRUE),
 (4,  '2026-01-17 20:10:00', 231, FALSE),
 (7,  '2026-01-17 22:00:00', 226, TRUE);
-
-
--------------------------------------- BOTTOM LINE --------------------------------------
--- Importowanie
--- \i 'C:/.../song_player_db.sql'
-
--- Usuwanie tabel z pamięci
--- DROP TABLE IF EXISTS ListeningHistory, PlaylistItems, Playlists, SongVersions, SongsGenres, SongsArtists, Songs, MusicAlbums, VersionTypes, Languages, MusicGenres, Artists CASCADE;
-
--- Fajne wyswietlanie TABEL
--- \x off
--- \pset pager off
--- \pset format aligned
--- \pset expanded off
-
-
