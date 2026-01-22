@@ -35,9 +35,9 @@ db_delete_playlist <- function(conn, p_id) {
   dbExecute(conn, "SELECT delete_playlist($1)", params = list(p_id))
 }
 
-db_add_song_to_playlist <- function(conn, p_id, sv_id, pos) {
-  dbExecute(conn, "SELECT add_song_to_playlist($1, $2, $3)", 
-            params = list(p_id, as.numeric(sv_id), pos))
+db_add_song_to_playlist <- function(conn, p_id, sv_id) {
+  dbGetQuery(conn, "SELECT add_song_to_playlist_auto($1, $2) AS new_position",
+    params = list(p_id, as.numeric(sv_id)))
 }
 
 db_remove_song_from_playlist <- function(conn, p_id, pos) {
