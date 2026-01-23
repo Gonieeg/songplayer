@@ -1,31 +1,55 @@
 ------------------ FUNKCJE DOT. PLAYLIST ------------------
--- 1. Pobieranie wszystkich playlist
+-- Pobieranie wszystkich playlist
 CREATE OR REPLACE FUNCTION get_all_playlists()
-RETURNS TABLE(playlist_id INTEGER, name VARCHAR, created_at DATE) AS $$
+RETURNS TABLE(playlist_id INTEGER, name VARCHAR, created_at DATE) 
+LANGUAGE plpgsql 
+AS $$ 
 BEGIN
     RETURN QUERY SELECT p.playlist_id, p.name, p.created_at 
                  FROM Playlists p ORDER BY p.playlist_id DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 5. Dodawanie playlisty
+-- Dodawanie playlisty
 CREATE OR REPLACE FUNCTION add_new_playlist(p_name VARCHAR)
-RETURNS VOID AS $$
+RETURNS VOID 
+LANGUAGE plpgsql 
+AS $$ 
 BEGIN
     INSERT INTO Playlists (name, created_at) 
     VALUES (p_name, CURRENT_DATE);
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 6. Usuwanie playlisty
+--- Zmiana nazwy playlisty
+CREATE OR REPLACE FUNCTION rename_playlist(pid INT, new_name VARCHAR(255))
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+BEGIN
+IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = pid) THEN
+        RETURN 'Nie ma playlisty o id=' || pid || '.';
+    END IF;
+	
+	UPDATE Playlists 
+		SET name = new_name
+			WHERE playlist_id=pid;
+    
+    RETURN 'Nazwa zmieniona pomyslnie.';
+END;
+$$;
+
+-- Usuwanie playlisty
 CREATE OR REPLACE FUNCTION delete_playlist(p_id INTEGER)
-RETURNS VOID AS $$
+RETURNS VOID 
+LANGUAGE plpgsql 
+AS $$
 BEGIN
     DELETE FROM Playlists WHERE playlist_id = p_id;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 3.Pobieranie zawartości konkretnej playlisty
+-- Pobieranie zawartości konkretnej playlisty
 CREATE OR REPLACE FUNCTION get_playlist_contents(p_id INTEGER)
 RETURNS TABLE(
     item_position INTEGER, 
@@ -35,7 +59,9 @@ RETURNS TABLE(
     version VARCHAR, 
     duration INTEGER, 
     song_version_id INTEGER
-) AS $$
+) 
+LANGUAGE plpgsql 
+AS $$ 
 BEGIN
     RETURN QUERY 
     SELECT 
@@ -57,12 +83,14 @@ BEGIN
     GROUP BY pi.position, s.title, a.title, vt.name, sv.duration, pi.song_version_id
     ORDER BY pi.position;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 4. Dodawanie utworu do playlisty
+-- Dodawanie utworu do playlisty
 -- FUNKCJA TECHNICZNA – NIE WOLAC Z UI
 CREATE OR REPLACE FUNCTION add_song_to_playlist_at(p_id INTEGER, sv_id INTEGER, p_pos INTEGER)
-RETURNS VOID AS $$
+RETURNS VOID 
+LANGUAGE plpgsql 
+AS $$ 
 BEGIN
     -- walidacja playlisty
     IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
@@ -82,16 +110,16 @@ BEGIN
     INSERT INTO PlaylistItems (playlist_id, song_version_id, position, added_at)
     VALUES (p_id, sv_id, p_pos, CURRENT_DATE);
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
--- 4.2 Dodawanie utworu do playlisty, ale automatycznie
+-- Dodawanie utworu do playlisty, ale automatycznie
 CREATE OR REPLACE FUNCTION add_song_to_playlist_auto(p_id INTEGER, sv_id INTEGER)
-RETURNS INTEGER
-LANGUAGE plpgsql
-AS $$
-DECLARE
+RETURNS INTEGER 
+LANGUAGE plpgsql 
+AS $$ 
+DECLARE 
     new_pos INTEGER;
-BEGIN
+BEGIN 
     -- walidacja playlisty 
     IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlist_id = p_id) THEN
         RAISE EXCEPTION 'Nie ma playlisty o id=%', p_id;
@@ -108,13 +136,13 @@ BEGIN
     FROM PlaylistItems
     WHERE playlist_id = p_id;
 
-    -- uzycie funkcji z 4
+    -- uzycie funkcji technicznej
     PERFORM add_song_to_playlist_at(p_id, sv_id, new_pos);
     RETURN new_pos;
 END;
 $$;
 
--- 7. Usuwanie utworu z playlisty
+-- Usuwanie utworu z playlisty
 CREATE OR REPLACE FUNCTION remove_song_from_playlist(p_id INTEGER, p_pos INTEGER)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -148,7 +176,7 @@ BEGIN
 END;
 $$;
 
--- 8. Zmiana pozycji na playliscie
+-- Zmiana pozycji na playliscie
 CREATE OR REPLACE FUNCTION move_playlist_item(p_id INTEGER, old_pos INTEGER, new_pos INTEGER)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -214,7 +242,7 @@ BEGIN
 END;
 $$;
 
--- 9. Odtworz utwor (zalozenie - user nie zna id, po prostu wybiera utwor)
+-- Odtworz utwor (zalozenie - user nie zna id, po prostu wybiera utwor)
 CREATE OR REPLACE FUNCTION play_playlist_item(p_id INTEGER, p_pos INTEGER, listened_sec INTEGER)
 RETURNS VOID
 LANGUAGE plpgsql
