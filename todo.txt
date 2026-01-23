@@ -1,18 +1,25 @@
 ---------------------- TO DO------------------------
 
-- wyswietlenie pelnej listy utworow, tzw. biblioteka
-- get_all_songs() / search_songs(...)
-
 - wybor piosenki do odtworzenia
 - get_playlist_choices()
-- oraz wersji piosenki
-- get_versions_for_song()
+
 
 - czyszczenie nieużywanych rzeczy jak 0 artystów, 0 gatunków, 0 jezyków
 
 ---- OPCJONALNE ALE COOL
+
+
+
+---------------------- DONE------------------------
+- wyswietlenie pelnej listy utworow, tzw. biblioteka
+- get_all_songs() / search_songs(...)
+
+- oraz wersji piosenki
+- get_versions_for_song()
+
 - zmiana nazwy playlisty
 - rename_playlist(...)
+
 
 -------------------------------------- BOTTOM LINE --------------------------------------
 -- Importowanie
