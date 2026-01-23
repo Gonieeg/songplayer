@@ -798,4 +798,3 @@ BEGIN
 	CROSS JOIN favourite_genre fg;
 END;
 $$;
->>>>>>> Stashed changes
