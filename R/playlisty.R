@@ -2,7 +2,6 @@ library(shiny)
 library(DBI)
 library(DT)
 library(RPostgres)
-#library(shinydashboard)
 library(shinyWidgets)
 
 # Łączenie z bazą
@@ -43,13 +42,11 @@ db_add_song_to_playlist <- function(conn, p_id, sv_id) {
 }
 
 db_remove_song_from_playlist <- function(conn, p_id, pos) {
-  dbExecute(conn, "SELECT remove_song_from_playlist($1, $2)", 
-            params = list(p_id, pos))
+  dbExecute(conn, "SELECT remove_song_from_playlist($1, $2)", params = list(p_id, pos))
 }
 
 db_move_playlist_item <- function(conn, p_id, old_pos, new_pos) {
-  dbExecute(conn, "SELECT move_playlist_item($1, $2, $3)",
-    params = list(p_id, old_pos, new_pos))
+  dbExecute(conn, "SELECT move_playlist_item($1, $2, $3)", params = list(p_id, old_pos, new_pos))
 }
 
 db_start_playback <- function(conn, sv_id) {
@@ -93,7 +90,7 @@ server <- function(input, output, session) {
   playlists_rv <- reactiveVal()
   songs_rv <- reactiveVal()
 
-    # Stan odtwarzania
+  # Stan odtwarzania
   current_session <- reactiveVal(NULL)
   playback_seconds <- reactiveVal(0)
   is_playing <- reactiveVal(FALSE)
@@ -123,10 +120,7 @@ server <- function(input, output, session) {
   
   # DYNAMICZNE UI 
   output$dynamic_songs_ui <- renderUI({
-    # Jeśli nie wybrano wiersza, nic nie pokazuj
-    if (is.null(input$playlist_table_rows_selected)) {
-      return(helpText("Wybierz playlistę, aby zobaczyć utwory."))
-    }
+    req(input$playlist_table_rows_selected)
 
     dur <- if (!is.null(input$songs_table_rows_selected))
       songs_rv()$duration[input$songs_table_rows_selected] else 1
@@ -139,19 +133,15 @@ server <- function(input, output, session) {
                  h4("Dodaj utwór"),
                  selectizeInput("song_v_id", "Wyszukaj utwór:", 
                                 choices = c("Zacznij pisać..." = "", db_get_song_choices(con))),
-                 #numericInput("pos", "Pozycja:", value = next_pos()), # psuło, było bez ()
                  actionButton("add_song_btn", "Dodaj do listy", class = "btn-primary"),
                  hr(),
-                 actionButton("move_up_btn", "↑ Przesuń w górę", class = "btn-secondary"),
-                 actionButton("move_down_btn", "↓ Przesuń w dół", class = "btn-secondary"),
-                 actionButton("remove_song_btn", "Usuń zaznaczony utwór", class = "btn-warning"),
+                 actionButton("move_up_btn", "↑", class = "btn-secondary"),
+                 actionButton("move_down_btn", "↓", class = "btn-secondary"),
+                 actionButton("remove_song_btn", "Usuń", class = "btn-warning"),
                  hr(),
                  #actionButton("play_btn", label = reactive(if (is_playing()) "Stop" else "Play")), # na dole w play_btn label
-                 actionButton("play_btn", "Play"),
-                 shinyWidgets::progressBar(id = "progress", value = 0, total = dur)
-                 actionButton("play_btn", label = reactive(if (is_playing()) "Stop" else "Play")),
-                 progressBar(id = "progress", value = playback_seconds(), total = dur)
-               )
+                 actionButton("play_btn", label = if (is_playing()) "Stop" else "Play"),
+                 progressBar("progress", value = playback_seconds(), total = dur))
         ),
         column(8,
                h4(paste("Zawartość:", playlists_rv()$name[input$playlist_table_rows_selected])),
@@ -164,7 +154,7 @@ server <- function(input, output, session) {
   
   # OBSŁUGA ZDARZEŃ: PLAYLISTY
   observeEvent(input$add_btn, {
-#    req(input$playlist_name) # zbędne?
+    req(input$playlist_name)
     db_add_playlist(con, input$playlist_name)
     playlists_rv(db_get_playlists(con))
     updateTextInput(session, "playlist_name", value = "")
@@ -185,11 +175,13 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$add_song_btn, {
+    req(input$song_v_id)
     db_add_song_to_playlist(con, get_selected_playlist_id(), input$song_v_id)
     songs_rv(db_get_playlist_items(con, get_selected_playlist_id()))
   })
 
   observeEvent(input$remove_song_btn, {
+    req(input$songs_table_rows_selected)
     pos <- songs_rv()$item_position[input$songs_table_rows_selected]
     # Wyciągamy pozycję z tabeli songs_rv
     db_remove_song_from_playlist(con, get_selected_playlist_id(), pos)
@@ -199,6 +191,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$move_up_btn, {
+    req(input$songs_table_rows_selected)
     pos <- songs_rv()$item_position[input$songs_table_rows_selected]
     if (pos > 1)
       db_move_playlist_item(con, get_selected_playlist_id(), pos, pos - 1)
@@ -206,6 +199,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$move_down_btn, {
+    req(input$songs_table_rows_selected)
     pos <- songs_rv()$item_position[input$songs_table_rows_selected]
     maxp <- max(songs_rv()$item_position)
     if (pos < maxp)
@@ -215,6 +209,7 @@ server <- function(input, output, session) {
       
   # PLAY / STOP
   observeEvent(input$play_btn, {
+    req(input$songs_table_rows_selected)
     if (!is_playing()) {
       sv_id <- songs_rv()$song_version_id[input$songs_table_rows_selected]
       sid <- db_start_playback(con, sv_id)
