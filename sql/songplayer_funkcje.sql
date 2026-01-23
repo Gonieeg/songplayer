@@ -714,9 +714,6 @@ CROSS JOIN most_listened_version mv
 CROSS JOIN most_listened_song ms
 CROSS JOIN favourite_genre fg;
 
-
-<<<<<<< Updated upstream
-=======
 --- STATYSTYKI OD DO
 ----- np. SELECT * FROM monthly_stats('2026-01-01', '2026-01-21');
 
