@@ -1,46 +1,29 @@
 ---------------------- TO DO------------------------
--- wyswietl biblioteke - get_song_version_choices()
--- wyswietl wersje dla utworu
--- odsluchaj -> zapis do ListeningHistory
--- wyswietl playlisty + zawartosc playlisty - get_all_playlists(), get_playlist_contents(p_id INTEGER)
--- dodawanie utworu do playlisty na koniec - add_song_to_playlist(p_id INTEGER, sv_id INTEGER, p_pos INTEGER) ---- nie na koniec!
--- usuwanie z playlisty
--- wyszukiwarka (tytuł / artysta / gatunek)
 
---------------- ODTWÓRZ (po kolei)  ---------------
------ piosenke (wersje) - odsłuchanie pojedyncze (bez next) (Gosia)
------ playliste
------ album
------ artyste
------ język
------ gatunek
------ następne (do każdego albo raz?) **opc
+- wyswietlenie pelnej listy utworow, tzw. biblioteka
+- get_all_songs() / search_songs(...)
 
---------------- DODAWANIE ---------------
------ dodaj playliste
------ dodaj album
+- wybor piosenki do odtworzenia
+- get_playlist_choices()
+- oraz wersji piosenki
+- get_versions_for_song()
 
---------------- USUWANIE  ---------------
------ usun playliste
+- czyszczenie nieużywanych rzeczy jak 0 artystów, 0 gatunków, 0 jezyków
 
---------------- MODYFIKIOWANIE ---------------
------ dodaj do playlisty
------ usun z playlisty
-
-
--------------------------------------- VIEW --------------------------------------
---------------- Teraz słuchasz ---------------
------ |tytuł|autor|album|czas trwania
-
---------------- Statystyki od x do y ---------------
------ funkcja
+---- OPCJONALNE ALE COOL
+- zmiana nazwy playlisty
+- rename_playlist(...)
 
 -------------------------------------- BOTTOM LINE --------------------------------------
 -- Importowanie
--- \i 'C:/.../song_player_db.sql'
+-- \cd 'sciezka/do/folderu'
+-- \i import.sql
 
 -- Usuwanie tabel z pamięci
 -- DROP TABLE IF EXISTS ListeningHistory, PlaylistItems, Playlists, SongVersions, SongsGenres, SongsArtists, Songs, MusicAlbums, VersionTypes, Languages, MusicGenres, Artists CASCADE;
+
+-- czyszczenie bazy
+DROP SCHEMA public CASCADE; CREATE SCHEMA public;
 
 -- Fajne wyswietlanie TABEL
 -- \x off
