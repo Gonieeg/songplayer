@@ -68,6 +68,8 @@ db_finish_playback <- function(conn, session_id) {
   dbExecute(conn, "SELECT finish_playback($1)", params = list(as.numeric(session_id)))
 }
 
+
+
 # Funkcje do dodawania/usuwanie piosenek z bazy
 
 db_get_library_full <- function(conn) {
@@ -158,6 +160,26 @@ db_delete_version_from_db <- function(conn, vid) {
 }
 
 
+db_modify_song <- function(conn, sid,
+                           new_lang = NULL,
+                           add_artist = NULL,
+                           delete_artist = NULL,
+                           add_genre = NULL,
+                           delete_genre = NULL) {
+  dbGetQuery(
+    conn,
+    "SELECT modify_song($1,$2,$3,$4,$5,$6)",
+    params = list(
+      as.integer(sid),
+      new_lang,
+      add_artist,
+      delete_artist,
+      add_genre,
+      delete_genre
+    )
+  )
+}
+
 # Funkcje statystyk
 db_get_all_stats <- function(conn) {
   dbGetQuery(conn, "SELECT * FROM statistics_all")
@@ -230,7 +252,25 @@ ui <- navbarPage(
                numericInput("new_s_duration", "Czas trwania (sekundy):", value = 200, min = 1),
                dateInput("new_s_date", "Data utworzenia wersji:", value = Sys.Date()),
                br(),
-               actionButton("save_song_btn", "Dodaj piosenkę do bazy", class = "btn-primary", width = "100%")
+               actionButton("save_song_btn", "Dodaj piosenkę do bazy", class = "btn-primary", width = "100%"),
+               
+               hr(),
+               
+               
+               h4("Modyfikuj zaznaczoną piosenkę"),
+               
+               textInput("mod_lang", "Nowy język:", ""),
+               textInput("mod_add_artist", "Dodaj artystę:", ""),
+               textInput("mod_del_artist", "Usuń artystę:", ""),
+               textInput("mod_add_genre", "Dodaj gatunek:", ""),
+               textInput("mod_del_genre", "Usuń gatunek:", ""),
+               
+               actionButton(
+                 "modify_song_btn",
+                 "Zastosuj zmiany",
+                 class = "btn-warning",
+                 width = "100%"
+               ),
              ),
              mainPanel(
                h3("Wszystkie piosenki w bazie danych"),
@@ -238,10 +278,9 @@ ui <- navbarPage(
                br(),
                actionButton("delete_song_db_btn", "USUŃ PIOSENKĘ (Z WSZYSTKIMI WERSJAMI)", class = "btn-danger"),
                
-               hr(), # Linia oddzielająca
-               
+               hr(),
                # Sekcja wersji - widoczna tylko po wybraniu piosenki
-               uiOutput("versions_management_ui")
+               uiOutput("versions_management_ui")# Linia oddzielająca
              )
            )
   ),
@@ -378,8 +417,8 @@ server <- function(input, output, session) {
         column(6,
                h4("Dodaj nową wersję"),
                wellPanel(
-                 textInput("new_v_type", "Typ (np. Remix, Live):", "Radio Edit"),
-                 numericInput("new_v_dur", "Czas (sekundy):", 180),
+                 textInput("new_v_type", "Typ :", "Remix"),
+                 numericInput("new_v_dur", "Czas (sekundy):", 220),
                  dateInput("new_v_date", "Data wersji:", value = Sys.Date()),
                  actionButton("save_version_btn", "Zapisz wersję", class = "btn-info", width = "100%")
                )
@@ -443,7 +482,7 @@ server <- function(input, output, session) {
   output$is_playing <- reactive({ playback_state$is_playing })
   outputOptions(output, "is_playing", suspendWhenHidden = FALSE)
   
-
+  
   
   # --- OBSŁUGA PRZYCISKÓW ODTWARZACZA ---
   
@@ -634,11 +673,57 @@ server <- function(input, output, session) {
     res <- db_delete_version_from_db(con, vid)
     showNotification(as.character(res[1,1]), type = "warning")
     
+    
     # Odśwież widoki
     versions_rv(db_get_versions_by_sid(con, sid))
     updateSelectizeInput(session, "song_v_id", choices = db_get_song_choices(con))
   })
   
+  
+  
+  # Pomocnicza funkcja dla modyfikacji
+  to_na <- function(x) {
+    if (is.null(x) || x == "") NA else x
+  }
+  
+  # Modyfikacja piosenki
+  observeEvent(input$modify_song_btn, {
+    req(input$full_library_table_rows_selected)
+    
+    sid <- library_rv()$song_id[input$full_library_table_rows_selected]
+    
+    # Zamiana pustych stringów na NULL
+    to_null <- function(x) if (is.null(x) || x == "") NULL else x
+    
+    tryCatch({
+      res <- db_modify_song(
+        con,
+        sid,
+        new_lang      = to_na(input$mod_lang),
+        add_artist    = to_na(input$mod_add_artist),
+        delete_artist = to_na(input$mod_del_artist),
+        add_genre     = to_na(input$mod_add_genre),
+        delete_genre  = to_na(input$mod_del_genre)
+      )
+      
+      showNotification(as.character(res[1,1]), type = "message")
+      
+      # Odśwież bibliotekę + playlisty
+      library_rv(db_get_library_full(con))
+      updateSelectizeInput(session, "song_v_id",
+                           choices = db_get_song_choices(con))
+      
+      # Wyczyść pola
+      updateTextInput(session, "mod_lang", value = "")
+      updateTextInput(session, "mod_add_artist", value = "")
+      updateTextInput(session, "mod_del_artist", value = "")
+      updateTextInput(session, "mod_add_genre", value = "")
+      updateTextInput(session, "mod_del_genre", value = "")
+      
+    }, error = function(e) {
+      showNotification(e$message, type = "error")
+    })
+  })
   # Renderowanie tabeli statystyk ogólnych
   output$stats_all_table <- renderTable({
     req(stats_all_rv())
