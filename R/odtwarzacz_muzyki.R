@@ -326,7 +326,7 @@ server <- function(input, output, session) {
   library_rv <- reactiveVal()
   versions_rv <- reactiveVal()
   stats_all_rv <- reactiveVal()
-  stats_monthly_rv <- reactiveVal()# Stan wersji wybranej piosenki
+  stats_monthly_rv <- reactiveVal()
   
   
   
@@ -345,7 +345,7 @@ server <- function(input, output, session) {
   observe({ 
     playlists_rv(db_get_playlists(con))
     library_rv(db_get_library_full(con))
-    stats_all_rv(db_get_all_stats(con))  # NOWA LINIA
+    stats_all_rv(db_get_all_stats(con))  
   })
   
   
@@ -387,7 +387,6 @@ server <- function(input, output, session) {
                  h4("Dodaj utwór"),
                  selectizeInput("song_v_id", "Wyszukaj utwór:", 
                                 choices = c("Zacznij pisać..." = "", db_get_song_choices(con))),
-                 # Zauważ: Brak numericInput dla pozycji!
                  actionButton("add_song_btn", "Dodaj na koniec", class = "btn-primary", width = "100%"),
                  actionButton("move_up", "Przesuń w górę", icon = icon("arrow-up")),
                  actionButton("move_down", "Przesuń w dół", icon = icon("arrow-down")),
@@ -434,7 +433,7 @@ server <- function(input, output, session) {
   })
   
   
-  # --- LOGIKA ODTWARZACZA (TIMER) ---
+  # Logika odtwarzacza (timer)
   
   # Timer działający co sekundę, gdy muzyka gra
   observe({
@@ -509,7 +508,7 @@ server <- function(input, output, session) {
     db_pause_playback(con, playback_state$session_id)
     showNotification("Pauza", type = "warning")
   })
-  # Przycisk STOP (też powinien używać finish_playback)
+
   observeEvent(input$stop_btn, {
     req(playback_state$session_id)
     
@@ -564,8 +563,6 @@ server <- function(input, output, session) {
     if(current_pos > 1) {
       db_move_item(con, get_selected_playlist_id(), current_pos, current_pos - 1)
       songs_rv(db_get_playlist_items(con, get_selected_playlist_id()))
-      # Automatyczne zaznaczenie wiersza po przesunięciu (opcjonalne)
-      # selectRows(proxy, current_pos - 1)
     }
   })
   
@@ -806,4 +803,5 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
 
