@@ -196,7 +196,7 @@ db_get_monthly_stats <- function(conn, od_dnia, do_dnia) {
 ui <- navbarPage(
   "Odtwarzacz Muzyki",
   
-  # ZAKŁADKA 1: Zarządzanie Playlistami (Twoje obecne UI)
+  # ZAKŁADKA 1: Zarządzanie Playlistami
   tabPanel("Odtwarzacz i Playlisty",
            fluidPage(
              fluidRow(
@@ -806,3 +806,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
